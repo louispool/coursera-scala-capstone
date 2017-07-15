@@ -32,17 +32,4 @@ libraryDependencies ++= Seq(
 
 courseId := "PCO2sYdDEeW0iQ6RUMSWEQ"
 
-assignmentsMap := Map(
-  "observatory" -> Assignment(
-    packageName = "observatory",
-    key = "l1U9JXBMEea_kgqTjVyNvw",
-    itemId = "Cr2wv",
-    partId = "CWoWG",
-    maxScore = 10d,
-    styleScoreRatio = 0.2,
-    styleSheet = (baseDirectory.value / "scalastyle" / "observatory.xml").getPath,
-    options = Map("Xmx"->"1500m", "grader-memory"->"2048", "grader-cpu" -> "2")
-  )
-)
-
 parallelExecution in Test := false // So that tests are executed for each milestone, one after the other

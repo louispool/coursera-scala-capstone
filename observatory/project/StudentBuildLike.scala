@@ -10,19 +10,26 @@ import scalaj.http._
 
 import scala.util.{Try, Success, Failure}
 
-case class MapMapString (val map: Map[String, Map[String, String]])
+case class AssignmentInfo(
+  key: String,
+  itemId: String,
+  premiumItemId: Option[String],
+  partId: String,
+  styleSheet: Option[File => File]
+)
+
+case class MapMapString (map: Map[String, Map[String, String]])
 /**
   * Note: keep this class concrete (i.e., do not convert it to abstract class or trait).
   */
 class StudentBuildLike protected() extends CommonBuild {
 
+  val assignmentInfo = SettingKey[AssignmentInfo]("assignmentInfo")
+
   lazy val root = project.in(file(".")).settings(
-    course := "",
-    assignment := "",
     submitSetting,
     submitLocalSetting,
     commonSourcePackages := Seq(), // see build.sbt
-    courseId := "",
     styleCheckSetting,
     libraryDependencies += scalaTestDependency
   ).settings(packageSubmissionFiles: _*)
@@ -110,12 +117,18 @@ class StudentBuildLike protected() extends CommonBuild {
     val s: TaskStreams = streams.value // for logging
     val jar = (packageSubmission in Compile).value
 
-    val assignmentName = assignment.value
-    val assignmentDetails = assignmentsMap.value(assignmentName)
+    val assignmentDetails = assignmentInfo.value
     val assignmentKey = assignmentDetails.key
-    val courseName = course.value
+    val courseName =
+      course.value match {
+        case "capstone" => "scala-capstone"
+        case "bigdata"  => "scala-spark-big-data"
+        case other      => other
+      }
+
     val partId = assignmentDetails.partId
     val itemId = assignmentDetails.itemId
+    val premiumItemId = assignmentDetails.premiumItemId
 
     val (email, secret) = args match {
       case email :: secret :: Nil =>
@@ -128,6 +141,13 @@ class StudentBuildLike protected() extends CommonBuild {
               |The submit token is NOT YOUR LOGIN PASSWORD.
               |It can be obtained from the assignment page:
               |https://www.coursera.org/learn/$courseName/programming/$itemId
+              |${
+                premiumItemId.fold("") { id =>
+                  s"""or (for premium learners):
+                     |https://www.coursera.org/learn/$courseName/programming/$id
+                   """.stripMargin
+                }
+              }
           """.stripMargin
         s.log.error(inputErr)
         failSubmit()
@@ -161,7 +181,7 @@ class StudentBuildLike protected() extends CommonBuild {
     }
 
     val connectMsg =
-      s"""|Attempting to submit "$assignmentName" assignment in "$courseName" course
+      s"""|Attempting to submit "${assignment.value}" assignment in "$courseName" course
           |Using:
           |- email: $email
           |- submit token: $secret""".stripMargin
@@ -190,6 +210,13 @@ class StudentBuildLike protected() extends CommonBuild {
                 |
                 |You can see how you scored by going to:
                 |https://www.coursera.org/learn/$courseName/programming/$itemId/
+                |${
+                  premiumItemId.fold("") { id =>
+                    s"""or (for premium learners):
+                       |https://www.coursera.org/learn/$courseName/programming/$id
+                       """.stripMargin
+                  }
+                }
                 |and clicking on "My Submission".""".stripMargin
           s.log.info(successfulSubmitMsg)
 
@@ -245,15 +272,18 @@ class StudentBuildLike protected() extends CommonBuild {
 
   val styleCheck = TaskKey[Unit]("styleCheck")
   val styleCheckSetting = styleCheck := {
-    val (_, sourceFiles, assignments, assignmentName) = ((compile in Compile).value, (sources in Compile).value, assignmentsMap.value, assignment.value)
-    val styleSheet = assignments(assignmentName).styleSheet
+    val (_, sourceFiles, info, assignmentName) = ((compile in Compile).value, (sources in Compile).value, assignmentInfo.value, assignment.value)
+    val styleSheet = info.styleSheet
     val logger = streams.value.log
-    if (styleSheet != "") {
-      val (feedback, score) = StyleChecker.assess(sourceFiles, styleSheet)
-      logger.info(
-        s"""|$feedback
-            |Style Score: $score out of ${StyleChecker.maxResult}""".stripMargin)
-    } else logger.warn("Can't check style: there is no style sheet provided.")
+    styleSheet match {
+      case None     => logger.warn("Can't check style: there is no style sheet provided.")
+      case Some(ss) =>
+        val (feedback, score) = StyleChecker.assess(sourceFiles, ss(baseDirectory.value).getPath)
+        logger.info(
+          s"""|$feedback
+              |Style Score: $score out of ${StyleChecker.maxResult}""".stripMargin)
+
+    }
   }
 
 }
