@@ -13,9 +13,9 @@ case class Temp(stationKey: String, date: LocalDate, temp: Double)
  */
 object Extraction {
 
-  def filePath(path: String) = new File(this.getClass.getClassLoader.getResource(if (path.startsWith("/")) path.substring(1) else path).toURI).getPath
+  private def filePath(path: String) = new File(getClass.getClassLoader.getResource(if (path.startsWith("/")) path.substring(1) else path).toURI).getPath
 
-  def fahrenheitToCelsius(F: Double) = (F - 32.0) * (5.0/9.0)
+  private def fahrenheitToCelsius(F: Double) = (F - 32.0) * (5.0/9.0)
 
   /**
     * @param year             Year number

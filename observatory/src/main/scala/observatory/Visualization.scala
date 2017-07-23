@@ -4,13 +4,15 @@ import java.lang.Math._
 
 import com.sksamuel.scrimage.{Image, Pixel}
 import observatory.SparkContext._
+import observatory.scheduler._
 
 /**
   * 2nd milestone: basic visualization
   */
 object Visualization {
+
   //IDW: Power Parameter
-  val p = 2
+  val p = 6
 
   //Mean radius of the Earth
   val RADIUS: Double = 6371000.0
@@ -27,22 +29,44 @@ object Visualization {
     * @param location Location where to predict the temperature
     * @return The predicted temperature at `location`
     */
-  def predictTemperature(temperatures: Iterable[(Location, Double)], location: Location): Double = {
+  def predictTemperature_SPARK(temperatures: Iterable[(Location, Double)], location: Location): Double = {
 
     val distToTempRDD = sc.parallelize(temperatures.toSeq).map(temps => (temps._2, distance(temps._1, location))) //PairRDD[(Temp, Dist)]
 
     //check for sensor data closer than 1km
     val smallDistRDD = distToTempRDD.filter(_._2 < 1000)
     //return temp of closest location
-    if (!smallDistRDD.isEmpty())
+    if (!smallDistRDD.isEmpty()) {
       smallDistRDD.min()((x: (Double, Double), y: (Double, Double)) => Ordering[Double].compare(x._2, y._2))._1
-    //else
+    } else {
+      //IDW: wi(x) = 1 / d(x,xi)^p
+      val invDistWeightRDD = distToTempRDD.map(tuple => (tuple._1, 1.0 / pow(tuple._2, p))) //PairRDD[(Temp, InvDist)]
 
-    //IDW: wi(x) = 1 / d(x,xi)^p
-    val invDistWeightRDD = distToTempRDD.map(tuple => (tuple._1, 1.0 / pow(tuple._2, p))) //PairRDD[(Temp, InvDist)]
+      //IDW: ∑wi*zi / ∑wi
+      invDistWeightRDD.map(tuple => tuple._1 * tuple._2).sum() / invDistWeightRDD.values.sum()
+    }
+  }
 
-    //IDW: ∑wi*zi / ∑wi
-    invDistWeightRDD.map(tuple => tuple._1*tuple._2).sum() / invDistWeightRDD.values.sum()
+  /**
+   * @param temperatures Known temperatures: pairs containing a location and the temperature at this location
+   * @param location     Location where to predict the temperature
+   * @return The predicted temperature at `location`
+   */
+  def predictTemperature(temperatures: Iterable[(Location, Double)], location: Location): Double = {
+
+    val distToTemp = temperatures.map(temps => (temps._2, distance(temps._1, location))) //Array[(Temp, Dist)]
+
+    //check for sensor data closer than 1km
+    if (distToTemp.exists(_._2 < 1000)) {
+      //return temp of closest location
+      distToTemp.filter(_._2 < 1000).minBy(_._2)._1
+    } else {
+      //IDW: wi(x) = 1 / d(x,xi)^p
+      val invDistWeight = distToTemp.map(tuple => (tuple._1, 1.0 / pow(tuple._2, p))) //Array[(Temp, InvDist)]
+
+      //IDW: ∑wi*zi / ∑wi
+      invDistWeight.map(tuple => tuple._1 * tuple._2).sum / invDistWeight.unzip._2.sum
+    }
   }
 
   /**
@@ -52,22 +76,32 @@ object Visualization {
     */
   def interpolateColor(points: Iterable[(Double, Color)], value: Double): Color = {
 
-    def lerp(c1: Color, c2: Color, t: Double) = Color(c1.red   + ((c2.red   - c1.red) * t + 0.5).toInt,
-                                                      c1.green + ((c2.green - c1.green) * t + 0.5).toInt,
-                                                      c1.blue  + ((c2.blue  - c1.blue) * t + 0.5).toInt)
+    def lerp(c1: Color, c2: Color, t: Double) = Color(((c1.red   + (c2.red   - c1.red)*t) + 0.5).toInt,
+                                                      ((c1.green + (c2.green - c1.green)*t) + 0.5).toInt,
+                                                      ((c1.blue  + (c2.blue  - c1.blue)*t) + 0.5).toInt)
 
     val sortedPoints = points.toSeq.sortBy(_._1) //Seq[(Double, Color)]
 
     val idx = sortedPoints.indexWhere(point => point._1 >= value)
-    if (idx < 0)
-      sortedPoints.last._2
-    if (idx == 0)
-      sortedPoints.head._2
-    //else
-    val pt1 = sortedPoints(idx - 1)
-    val pt2 = sortedPoints(idx)
+    if (idx < 0) {
+      sortedPoints.last._2 //Lowest Temperature
+    } else if (idx == 0) {
+      sortedPoints.head._2 //Highest Temperature
+    } else {
+      val pt1 = sortedPoints(idx - 1)
+      val pt2 = sortedPoints(idx)
 
-    lerp(pt1._2, pt2._2, (value - pt1._1) / (pt2._1 - pt1._1))
+      //Interpolate Color
+      lerp(pt1._2, pt2._2, (value - pt1._1) / (pt2._1 - pt1._1))
+    }
+  }
+
+  def calcPixel(temperatures: Iterable[(Location, Double)], colors: Iterable[(Double, Color)], loc: Location): Pixel = {
+
+    val temp = predictTemperature(temperatures, loc)
+    val color = interpolateColor(colors, temp)
+
+    Pixel(color.red, color.green, color.blue, 255)
   }
 
   /**
@@ -77,15 +111,41 @@ object Visualization {
     */
   def visualize(temperatures: Iterable[(Location, Double)], colors: Iterable[(Double, Color)]): Image = {
 
-    val pixels = new Array[Pixel](360*180)
-    for (lat <- 90 until -90;lon <- -180 until 180) {
+    //Image dimensions
+    val imgHeight = 180
+    val imgWidth = 360
 
-      val temp  = predictTemperature(temperatures, Location(lat, lon))
-      val color = interpolateColor(colors, temp)
+    val pixels = new Array[Pixel](imgWidth*imgHeight)
+    
+    def calcTile(startLat: Int, endLat: Int,
+                 startLon: Int, endLon: Int) = {
 
-      pixels(lat*180 + lon) = Pixel(color.red, color.green, color.blue, 255)
+      for (lat <- startLat until endLat by -1;
+           lon <- startLon until endLon by  1) {
+
+        pixels(-360*(lat - 90) + (lon + 180)) = calcPixel(temperatures, colors, Location(lat, lon))
+      }
     }
-    Image(360, 180, pixels)
+
+    //Number of tiles used during visualization on the horizontal and vertical (ie. total number of tiles = numTiles^2)
+    //For now needs to divide the image dimensions cleanly with no remainder
+    val numTiles = 6
+
+    //Accumulate concurrent tasks
+    val rowInc = -imgHeight / numTiles
+    val colInc = imgWidth / numTiles
+
+    val tasks = for {
+       lat <- 90 until -90 by rowInc
+       lon <- -180 until 180 by colInc
+    } yield task(calcTile(lat, lat + rowInc,
+                          lon, lon + colInc))
+
+    //Wait for tasks to finish
+    tasks.foreach(t => t.join())
+
+    //Return finished image
+    Image(imgWidth, imgHeight, pixels)
   }
 }
 
