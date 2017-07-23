@@ -41,7 +41,7 @@ object Interaction {
 
     def calcTile(zoom: Int, depth: Int, x: Int, y: Int, row: Int, col: Int, pixels: Array[Pixel]): Unit = {
       if (depth == 8) {
-        pixels(row*256 + col) = Visualization.calcPixel(temperatures, colors, tileLocation(zoom, x, y))
+        pixels(row*256 + col) = Visualization.calcPixel(temperatures, colors, tileLocation(zoom, x, y), 127)
       } else {
         parallel(calcTile(zoom + 1, depth + 1, 2*x, 2*y, row*2, col*2, pixels), //Top Left
                  calcTile(zoom + 1, depth + 1, 2*x + 1, 2*y, row*2, col*2 + 1, pixels), //Top Right

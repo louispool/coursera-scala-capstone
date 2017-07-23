@@ -96,12 +96,12 @@ object Visualization {
     }
   }
 
-  def calcPixel(temperatures: Iterable[(Location, Double)], colors: Iterable[(Double, Color)], loc: Location): Pixel = {
+  def calcPixel(temperatures: Iterable[(Location, Double)], colors: Iterable[(Double, Color)], loc: Location, alpha: Int): Pixel = {
 
     val temp = predictTemperature(temperatures, loc)
     val color = interpolateColor(colors, temp)
 
-    Pixel(color.red, color.green, color.blue, 255)
+    Pixel(color.red, color.green, color.blue, alpha)
   }
 
   /**
@@ -123,7 +123,7 @@ object Visualization {
       for (lat <- startLat until endLat by -1;
            lon <- startLon until endLon by  1) {
 
-        pixels(-360*(lat - 90) + (lon + 180)) = calcPixel(temperatures, colors, Location(lat, lon))
+        pixels(-360*(lat - 90) + (lon + 180)) = calcPixel(temperatures, colors, Location(lat, lon), 255)
       }
     }
 
