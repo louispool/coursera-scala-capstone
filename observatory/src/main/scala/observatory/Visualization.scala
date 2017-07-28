@@ -113,6 +113,8 @@ object Visualization {
     Pixel(color.red, color.green, color.blue, alpha)
   }
 
+  def toIdx(lat: Int, lon: Int): Int = -360 * (lat - 90) + (lon + 180)
+
   /**
     * @param temperatures Known temperatures
     * @param colors Color scale
@@ -132,7 +134,7 @@ object Visualization {
       for (lat <- startLat until endLat by -1;
            lon <- startLon until endLon by  1) {
 
-        pixels(-360*(lat - 90) + (lon + 180)) = calcPixel(temperatures, colors, Location(lat, lon), 255)
+        pixels(toIdx(lat, lon)) = calcPixel(temperatures, colors, Location(lat, lon), 255)
       }
     }
 
