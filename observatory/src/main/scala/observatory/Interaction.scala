@@ -1,6 +1,8 @@
 package observatory
 
+import java.io.File
 import java.lang.Math._
+import java.nio.file.{Files, Paths}
 
 import com.sksamuel.scrimage.{Image, Pixel}
 import observatory.scheduler._
@@ -81,5 +83,24 @@ object Interaction {
     for ((year, data) <- yearlyData) {
       zoomIn(year, 0, 0, 0, data)
     }
- }
+  }
+
+  def main(args: Array[String]): Unit = {
+
+    def generateImage(year: Int, zoom: Int, x: Int, y: Int, data: Iterable[(Location, Double)]): Unit = {
+
+      val image = Interaction.tile(data, Visualization.colors, zoom, x, y)
+
+      val dir = s"target/temperatures/$year/$zoom"
+      Files.createDirectories(Paths.get(dir))
+
+      image.output(new File(s"$dir/$x-$y.png"))
+    }
+
+    //Generate tiles for 2015
+    val temps = Extraction.locateTemperatures(2015, "/stations.csv", "/2015.csv")
+    val yearlyAvg = Extraction.locationYearlyAverageRecords(temps)
+
+    Interaction.generateTiles(Seq[(Int, Iterable[(Location, Double)])]((2015, yearlyAvg)), generateImage)
+  }
 }
