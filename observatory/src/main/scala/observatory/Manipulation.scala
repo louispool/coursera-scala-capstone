@@ -62,10 +62,8 @@ object Manipulation {
 
     //Average the temperatures
     val numYears = temperaturess.size
-    var idx = 0
-    while (idx < averages.length) {
-      averages(idx) = averages(idx) / numYears
-      idx += 1
+    for (i <- averages.indices) {
+      averages(i) = averages(i) / numYears
     }
 
     //Return function
