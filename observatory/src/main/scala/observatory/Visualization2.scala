@@ -16,6 +16,14 @@ import scala.collection.mutable.ArrayBuffer
   */
 object Visualization2 {
 
+  //Color Scale
+  val dev_colors: Seq[(Double, Color)] = Seq[(Double, Color)]((7, Color(0, 0, 0)),
+                                                              (4, Color(255, 0, 0)),
+                                                              (2, Color(255, 255, 0)),
+                                                              (0, Color(255, 255, 255)),
+                                                              (-2, Color(0, 255, 255)),
+                                                              (-7, Color(0, 0, 255)))
+
   /**
     * @param x X coordinate between 0 and 1
     * @param y Y coordinate between 0 and 1
@@ -99,19 +107,19 @@ object Visualization2 {
 
   def main(args: Array[String]): Unit = {
 
-    var t0 = System.nanoTime()
+//    var t0 = System.nanoTime()
     val normals = Visualization2.normals(1989, 1989)
-    var timeElapsed = (System.nanoTime() - t0) / 1e9
-    println(f"Time taken for computation of Normals: $timeElapsed%.0fs")
+//    var timeElapsed = (System.nanoTime() - t0) / 1e9
+//    println(f"Time taken for computation of Normals: $timeElapsed%.0fs")
 
-    t0 = System.nanoTime()
+//    t0 = System.nanoTime()
     val deviations = Visualization2.deviations(2015, 2015, normals)
-    timeElapsed = (System.nanoTime() - t0) / 1e9
-    println(f"Time taken for computation of Deviations: $timeElapsed%.0fs")
+//    timeElapsed = (System.nanoTime() - t0) / 1e9
+//    println(f"Time taken for computation of Deviations: $timeElapsed%.0fs")
 
     def generateImage(year: Int, zoom: Int, x: Int, y: Int, data: (Int, Int) => Double): Unit = {
 
-      val image = Visualization2.visualizeGrid(data, Visualization.colors, zoom, x, y)
+      val image = Visualization2.visualizeGrid(data, Visualization.temp_colors, zoom, x, y)
 
       val dir = s"target/deviations/$year/$zoom"
       Files.createDirectories(Paths.get(dir))

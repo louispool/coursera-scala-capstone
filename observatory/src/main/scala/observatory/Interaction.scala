@@ -89,7 +89,7 @@ object Interaction {
 
     def generateImage(year: Int, zoom: Int, x: Int, y: Int, data: Iterable[(Location, Double)]): Unit = {
 
-      val image = Interaction.tile(data, Visualization.colors, zoom, x, y)
+      val image = Interaction.tile(data, Visualization.temp_colors, zoom, x, y)
 
       val dir = s"target/temperatures/$year/$zoom"
       Files.createDirectories(Paths.get(dir))

@@ -5,11 +5,30 @@ package observatory
   */
 object Interaction2 {
 
+  //Color Scales
+  val temp_colors: Seq[(Double, Color)] = Seq[(Double, Color)]((60, Color(255, 255, 255)),
+                                                               (32, Color(255, 0, 0)),
+                                                               (12, Color(255, 255, 0)),
+                                                               (0, Color(0, 255, 255)),
+                                                               (-15, Color(0, 0, 255)),
+                                                               (-27, Color(255, 0, 255)),
+                                                               (-50, Color(33, 0, 107)),
+                                                               (-60, Color(0, 0, 0)))
+
+  val dev_colors: Seq[(Double, Color)] = Seq[(Double, Color)]((7, Color(0, 0, 0)),
+                                                              (4, Color(255, 0, 0)),
+                                                              (2, Color(255, 255, 0)),
+                                                              (0, Color(255, 255, 255)),
+                                                              (-2, Color(0, 255, 255)),
+                                                              (-7, Color(0, 0, 255)))
+
+
   /**
     * @return The available layers of the application
     */
   def availableLayers: Seq[Layer] = {
-    ???
+    Seq(Layer(LayerName.Temperatures, temp_colors, 1975 to 2015),
+        Layer(LayerName.Deviations, dev_colors, 1990 to 2015))
   }
 
   /**
@@ -17,7 +36,7 @@ object Interaction2 {
     * @return A signal containing the year bounds corresponding to the selected layer
     */
   def yearBounds(selectedLayer: Signal[Layer]): Signal[Range] = {
-    ???
+    Signal(selectedLayer().bounds)
   }
 
   /**
@@ -29,7 +48,10 @@ object Interaction2 {
     *         in the `selectedLayer` bounds.
     */
   def yearSelection(selectedLayer: Signal[Layer], sliderValue: Signal[Int]): Signal[Int] = {
-    ???
+    Signal({
+      val range = selectedLayer().bounds
+      Math.max(range.start, Math.min(range.end, sliderValue()))
+    })
   }
 
   /**
@@ -38,7 +60,7 @@ object Interaction2 {
     * @return The URL pattern to retrieve tiles
     */
   def layerUrlPattern(selectedLayer: Signal[Layer], selectedYear: Signal[Int]): Signal[String] = {
-    ???
+    Signal("target/" + selectedLayer().layerName.id + "/" + selectedYear() + "/{z}/{x}-{y}.png")
   }
 
   /**
@@ -47,9 +69,8 @@ object Interaction2 {
     * @return The caption to show
     */
   def caption(selectedLayer: Signal[Layer], selectedYear: Signal[Int]): Signal[String] = {
-    ???
+    Signal(selectedLayer().layerName + " (" + selectedYear() + ")")
   }
-
 }
 
 sealed abstract class LayerName(val id: String)

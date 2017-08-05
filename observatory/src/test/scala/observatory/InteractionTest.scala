@@ -17,7 +17,7 @@ class InteractionTest extends FunSuite with Checkers {
     val temps = Extraction.locateTemperatures(2017, "/stations_test.csv", "/temp_test.csv")
     val yearlyAvg = Extraction.locationYearlyAverageRecords(temps)
 
-    val image = Interaction.tile(yearlyAvg, Visualization.colors, 0, 0, 0)
+    val image = Interaction.tile(yearlyAvg, Visualization.temp_colors, 0, 0, 0)
 
     image.output(new File("Interaction.png"))
   }
